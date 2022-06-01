@@ -10,22 +10,44 @@
 #include "PluginEditor.h"
 
 //==============================================================================
+/** Helper function for generating the parameter layout. */
+juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout params (
+        std::make_unique<juce::AudioParameterFloat>(
+            "MainGain",
+            "Gain",
+            juce::NormalisableRange<float>(0.0, 1.0),
+            0.8,
+            juce::String(),
+            juce::AudioProcessorParameter::genericParameter,
+            [](float value, int /* maxLength */) {
+                return juce::String(juce::Decibels::gainToDecibels(value), 1) + "dB";
+            },
+            nullptr
+        ),
+        std::make_unique<juce::AudioParameterBool>(
+            "MainMute",
+            "Mute",
+            false
+       )
+    );
+
+    return params;
+}
+
+//==============================================================================
 GainPluginAudioProcessor::GainPluginAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
                        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
-#endif
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+       params(*this, nullptr, JucePlugin_Name, createParameterLayout())
 {
 }
 
 GainPluginAudioProcessor::~GainPluginAudioProcessor()
 {
+    stopTimer();
 }
 
 //==============================================================================
@@ -95,6 +117,7 @@ void GainPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    gain.reset(sampleRate, 0.02);
 }
 
 void GainPluginAudioProcessor::releaseResources()
@@ -150,12 +173,20 @@ void GainPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     // the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
 
-        // ..do something to the data...
+    // Our intense dsp processing
+    gain.setTargetValue(*params.getRawParameterValue("MainGain"));
+    gain.applyGain(buffer, buffer.getNumSamples());
+
+    if (auto *muteParam  = dynamic_cast<juce::AudioParameterBool*>(params.getParameter("MainMute")))
+    {
+        bool muted = muteParam->get();
+        if (muted)
+            buffer.applyGain(0.0f);
     }
+
+    // Read current block gain peak value
+    gainPeakValue = buffer.getMagnitude (0, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -166,7 +197,39 @@ bool GainPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* GainPluginAudioProcessor::createEditor()
 {
-    return new GainPluginAudioProcessorEditor (*this);
+    // The GainPlugin example uses the GenericEditor, which is a default
+    // AudioProcessorEditor provided that will automatically bootstrap
+    // your React root, install some native method hooks for parameter interaction
+    // if you provide an AudioProcessorValueTreeState, and manage hot reloading
+    // of the source bundle. You can always start with the GenericEditor
+    // then switch to a custom editor when you need more explicit control.
+    juce::File sourceDir = juce::File(GAINPLUGIN_SOURCE_DIR);
+    juce::File bundle = sourceDir.getChildFile("jsui/build/js/main.js");
+
+    auto* editor = new reactjuce::GenericEditor(*this, bundle);
+
+    editor->setResizable(true, true);
+    editor->setResizeLimits(400, 240, 400 * 2, 240 * 2);
+    editor->getConstrainer()->setFixedAspectRatio(400.0 / 240.0);
+    editor->setSize (400, 240);
+
+    // Start timer to dispatch gainPeakValues event to update Meter values
+    startTimer(100);
+
+    return editor;
+}
+
+void GainPluginAudioProcessor::timerCallback()
+{
+    if (auto* editor = dynamic_cast<reactjuce::GenericEditor*>(getActiveEditor()))
+    {
+        // Dispatch gainPeakValues event used by Meter React component
+        editor->getReactAppRoot().dispatchEvent(
+            "gainPeakValues",
+            static_cast<float>(gainPeakValue),
+            static_cast<float>(gainPeakValue)
+        );
+    }
 }
 
 //==============================================================================
