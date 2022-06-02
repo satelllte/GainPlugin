@@ -13,7 +13,7 @@
 //==============================================================================
 /**
 */
-class GainPluginAudioProcessor  : public juce::AudioProcessor
+class GainPluginAudioProcessor  : public juce::AudioProcessor, private juce::Timer
 {
 public:
     //==============================================================================
@@ -53,7 +53,17 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    //==============================================================================
+    juce::AudioProcessorValueTreeState& getValueTreeState() { return params; }
+    
+    void timerCallback() override;
+
 private:
+    //==============================================================================
+    juce::AudioProcessorValueTreeState params;
+    juce::LinearSmoothedValue<float> gain;
+    std::atomic<float> gainPeakValue;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GainPluginAudioProcessor)
 };

@@ -1,3 +1,6 @@
 [submodule "JUCE"]
 	path = JUCE
 	url = git@github.com:juce-framework/JUCE.git
+[submodule "react-juce"]
+	path = react-juce
+	url = git@github.com:JoshMarler/react-juce.git

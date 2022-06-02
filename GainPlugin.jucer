@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="tcgqlw" name="GainPlugin" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              cppLanguageStandard="20" version="0.1.0">
+              cppLanguageStandard="20" version="0.2.0" defines="REACTJUCE_USE_DUKTAPE=1">
   <MAINGROUP id="G1fUUn" name="GainPlugin">
     <GROUP id="{AFE18BFD-CC4D-4B78-7E39-4D102510E7F4}" name="Source">
       <FILE id="fltgS9" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -16,7 +16,7 @@
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX">
+    <XCODE_MAC targetFolder="Builds/MacOSX" extraDefs="GAINPLUGIN_SOURCE_DIR=&quot;$(SRCROOT)/../../Source&quot;">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="GainPlugin"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="GainPlugin"/>
@@ -34,6 +34,7 @@
         <MODULEPATH id="juce_graphics" path="JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="JUCE/modules"/>
+        <MODULEPATH id="react_juce" path="react-juce"/>
       </MODULEPATHS>
     </XCODE_MAC>
   </EXPORTFORMATS>
@@ -51,5 +52,6 @@
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="react_juce" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
   </MODULES>
 </JUCERPROJECT>
